@@ -24,6 +24,10 @@ class SelfAttention(nn.Module):
         keys = keys.reshape(N, key_len, self.heads, self.head_dim)
         queries = query.reshape(N, query_len, self.heads, self.head_dim)
 
+        values = self.values(values)
+        keys = self.keys(keys)
+        queries = self.queries(queries)
+
         energy = torch.einsum("nqhd,nkhd->nhqk", [queries, keys])
         # queries shape: (N, query_len, heads, head_dim)
         # keys shape: (N, key_len, heads, head_dim)
@@ -58,8 +62,12 @@ class TransformerBlock(nn.Module):
 
     def forward(self, value, key, query, mask):
         attention = self.attention(value, key, query, mask)
+        if attention is None:
+            attention = torch.zeros_like(query)
         x = self.dropout(self.norm1(attention + query))
         forward = self.feed_forward(x)
+        if forward is None:
+            forward = torch.zeros_like(x)
         out = self.dropout(self.norm2(forward + x))
 
         return out
@@ -90,6 +98,7 @@ class Encoder(nn.Module):
                     dropout=dropout,
                     forward_expansion=forward_expansion
                 )
+                for _ in range(num_layers)
             ]
         )
 
@@ -115,6 +124,8 @@ class DecoderBlock(nn.Module):
 
     def forward(self, x, value, key, src_mask, trg_mask):
         attention = self.attention(x, x, x, trg_mask)
+        if attention is None:
+            attention = torch.zeros_like(x)
         query = self.dropout(self.norm(attention + x))
         out = self.transformer_block(value, key, query, src_mask)
 
@@ -225,3 +236,18 @@ class Transformer(nn.Module):
         enc_src = self.encoder(src, src_mask)
         out = self.decoder(trg, enc_src, src_mask, trg_mask)
         return out
+
+if __name__ == "__main__":
+    device = torch.device("cpu")
+
+    x = torch.tensor([[1, 5, 6, 4, 3, 9, 5, 2, 0], [1, 8, 7, 3, 4, 5, 6, 7, 2]]).to(device)
+    trg = torch.tensor([[1, 7, 4, 3, 5, 9, 2, 0], [1, 5, 6, 2, 4, 7, 6, 2]]).to(device)
+
+    src_pad_idx = 0
+    trg_pad_idx = 0
+    src_vocab_size = 10
+    trg_vocab_size = 10
+    model = Transformer(src_vocab_size, trg_vocab_size, src_pad_idx, trg_pad_idx).to(device)
+    
+    out = model(x, trg[:, :-1])
+    print(out.shape)
