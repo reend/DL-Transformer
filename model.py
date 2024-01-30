@@ -240,30 +240,14 @@ class Transformer(nn.Module):
 if __name__ == "__main__":
     device = torch.device("cpu")
 
-    # Define your vocabularies.
-    src_vocab = {"<pad>": 0, "m": 1, "a": 2, "k": 3, "e": 4}
-    trg_vocab = {"<pad>": 0, "f": 1, "a": 2, "i": 3, "r": 4, "e": 5}
+    x = torch.tensor([[1, 5, 6, 4, 3, 9, 5, 2, 0], [1, 8, 7, 3, 4, 5, 6, 7, 2]]).to(device)
+    trg = torch.tensor([[1, 7, 4, 3, 5, 9, 2, 0], [1, 5, 6, 2, 4, 7, 6, 2]]).to(device)
 
-    # Convert your words into sequences of integer IDs.
-    src_word = "make"
-    trg_word = "faire"  # This is the French translation of "make".
-    x = torch.tensor([src_vocab[char] for char in src_word]).unsqueeze(0).to(device)
-    trg = torch.tensor([trg_vocab[char] for char in trg_word]).unsqueeze(0).to(device)
-
-    src_pad_idx = src_vocab["<pad>"]
-    trg_pad_idx = trg_vocab["<pad>"]
-    src_vocab_size = len(src_vocab)
-    trg_vocab_size = len(trg_vocab)
-
-    # Load your trained Transformer model.
+    src_pad_idx = 0
+    trg_pad_idx = 0
+    src_vocab_size = 10
+    trg_vocab_size = 10
     model = Transformer(src_vocab_size, trg_vocab_size, src_pad_idx, trg_pad_idx).to(device)
-    # model.load_state_dict(torch.load("transformer.pth"))  # Uncomment this line if you have a trained model.
-
-    # Pass the source word through the model.
+    
     out = model(x, trg[:, :-1])
-
-    # Convert the output tensor into a French word.
-    out_word_ids = out.argmax(dim=-1).squeeze(0).tolist()
-    out_word = "".join([key for key, value in trg_vocab.items() if value in out_word_ids])
-
-    print(f"The translation of '{src_word}' is '{out_word}'.")
+    print(out.shape)
